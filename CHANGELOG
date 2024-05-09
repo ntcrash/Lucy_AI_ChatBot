@@ -1,0 +1,102 @@
+# Change Log
+## [1.0.1.12] 2024-05-06
+### Added
+- Reminder Function
+- Added lucy_chat_gpt using ChatGPT API
+### Removed
+### Fixed
+### Changed
+### Security
+
+## [1.0.1.11] 2024-05-04
+### Added
+- Telegram Chat group added with Lucy responses
+### Removed
+### Fixed
+### Changed
+### Security
+
+## [1.0.1.10] 2024-05-04
+### Added
+- Virtual environment Python 3.9.6
+- Created a requirements file
+### Removed
+### Fixed
+### Changed
+- Cleaning up Code to PEP 8 standards
+### Security
+
+## [1.0.1.8] - 2024-04-24
+### Added
+### Removed
+### Fixed
+### Changed
+- Cleaned up Default Functions and MainApp scripts
+### Security
+
+## [1.0.1.7] - 2024-04-23
+### Added
+- UI for better experience
+- Added GetSpeech
+- Added LucyGUI to stream line functions to work better with a UI. Uses the same database as Lucy
+- Added Games (testing...)
+### Removed
+### Fixed
+### Changed
+- Cleaned up get weather function and automated finding city
+### Security
+
+## [1.0.1.5] - 2024-04-21
+### Added
+- Added text to speech function
+- Added get_weather function
+- Added speech to text function
+- Added ChatPotProd -- This will be the tested version of ChatPotTest code plus it will be nice and clean
+- Added EmotionalMarker Chat (testing)
+### Removed
+### Fixed
+- csv training is now functioning properly!
+- Best match score for better responses
+### Changed
+- Changed ChatPotTest function name to Lucy
+### Security
+
+## [1.0.1.4] - 2024-04-16
+### Added
+- Added create_csv_file
+- Added WriteToCSV
+- Added ChatPotTest (working function)
+- Added ChatBotTest 
+### Removed
+### Fixed
+- Adding more training to the ChatPotTest function. This is to give it better and more acurate responses
+### Changed
+### Security
+
+## [1.0.1.3] - 2024-04-13
+### Added
+- Added DateTimeLog Function
+- Added WriteLog Function
+- Added GetSysInfo
+- Added GetBootTime
+- Added GetNetworkInfo
+- Added GetDiskUsage
+- Added GetMemUsage
+### Removed
+### Fixed
+- Fixed WriteLog Functio to check for errortype with auto populated selection
+### Changed
+- Moved Add Function MainApplication
+- Moved Loops Function to MainApplication
+- Moved Submit Function to MainApplication
+- Adding Error Catching
+### Security
+
+
+# Template
+## [1.0.1.x] - YYYY-MM-DD
+### Added
+### Removed
+### Fixed
+### Changed
+### Security
