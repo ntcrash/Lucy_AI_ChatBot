@@ -1,23 +1,26 @@
-# Lucy AI ChatBot 1.0.1.12 - 2024-05-06
+# Lucy AI ChatBot 1.0.1.13 - 2024-05-08
 ## Change Log info
 - x.x.x.y Y is the currently active build, once complete Y will be dropped and the version locked in.
 ### ChangeLog started in ver. 1.0.1.x
-#### Current Dev build 1.0.1.12
+#### Current Dev build 1.0.1.13
 - Fixed AI training
 - Added Text to Speech
 - Added Speech to Text
-- Added Get_Weather (Still beta)
-- Added Emotional Marker Bot
+- Added Get_Weather
+- Added Emotional Marker Bot (beta)
 - Cleaned up Default Functions and MainApp scripts
 - Cleaning up function names and var names to meet standards
 - Added Telegram Chat bot
-- Reminder function (beta)
+- Reminder Function (beta partially working)
+- Added write_reminder_file
+- Added check_create_reminder_file
  
 # How to run the app
 ## Running the app
 - Once you install all the requirements launch MainApplication.py
 
 ## Setup Guide in progress
+- Use project requirements file for all packages.
 - for psutil to work you will need to install it first
 - pip3 install psutil
 - Need to install chattbot lib - pip3 install chatterbot
@@ -33,9 +36,9 @@
 - pip3 install requests
 - pip3 install beautifulsoup4
 - brew install flac
-## This is for use with most scripts for use as default functions
+## This file contains main functions as well as test functions
 ### Includes
-- WriteLog
+- write_log
 - CSV File operations
 - System info
 - ChatPot AI 
@@ -43,3 +46,9 @@
 - Speech to Text
 - Weather
 - and more to come...
+## Issue List
+01 - Need to fix reminder function
+## Project Road Map
+- Reminder and Notifier Apps (work in progress)
+- Consolidated web searches
+- Web / Mobile app frontend

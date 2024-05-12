@@ -1,6 +1,6 @@
 ##################################################
 # Main Function for Launching Lucy AI ChatBot    #
-# Version 1.0.1.12 - Released 2024-05-07         #
+# Version 1.0.1.13 - Released 2024-05-11         #
 # Author - Lawrence Lutton                       #
 ##################################################
 
@@ -12,7 +12,7 @@ import os.path
 import re
 import sys
 from datetime import datetime
-# import psutil # type: ignore
+import psutil
 from typing import Literal, get_args
 from chatterbot import ChatBot
 from chatterbot.trainers import ListTrainer
@@ -24,15 +24,19 @@ from PyQt5.QtWidgets import *
 from bs4 import BeautifulSoup
 from gtts import gTTS
 import pyttsx3
-from selenium import webdriver # to control browser operations
+from selenium import webdriver  # to control browser operations
 import assistant
 import pync
 import time
 import creds
-
-recognizer = sr.Recognizer()
+import telebot
+import openai
+# import notifier  # Importing notifier.py
+# import getReminders  # Importing getReminders.py
+# import notify2
 
 # Initialize the recognizer
+recognizer = sr.Recognizer()
 r = sr.Recognizer()
 
 city_names = ["Aberdeen", "Abilene", "Akron", "Albany", "Albuquerque", "Alexandria", "Allentown", "Amarillo", "Anaheim",
@@ -89,24 +93,28 @@ city_names = ["Aberdeen", "Abilene", "Akron", "Albany", "Albuquerque", "Alexandr
 # Setting up a list for error logging levels.
 LogLevel = Literal['Info', 'Error', 'Critical']
 
+# Defining file name
+filename = "reminder.csv"
+path = f'./{filename}'
+
 # Creating the Main Logging Function
 
+
 #  Creates a nice Date Stamp for use with Logging.
-def DateTimeLog():
+def date_time_log():
     # datetime object containing current date and time
     now = datetime.now()
     # mm/dd/YY H:M:S
     dt_string = now.strftime("%m/%d/%Y %H:%M:%S")
     return dt_string
-
-
 # End DateTime Function
 
-def WriteLog(Message, FuncName, ErrorType: LogLevel = "Info"):
+
+def write_log(Message, FuncName, ErrorType: LogLevel = "Info"):
     options = get_args(LogLevel)
     assert ErrorType in options, f"'{ErrorType}' is not in {options}"
 
-    TimeStamp: str = DateTimeLog()
+    TimeStamp: str = date_time_log()
     logger = logging.getLogger(FuncName)
     if ErrorType == 'Info':
         logging.basicConfig(filename='events.log', level=logging.INFO)
@@ -119,7 +127,7 @@ def WriteLog(Message, FuncName, ErrorType: LogLevel = "Info"):
         logger.critical(repr(TimeStamp) + ": " + repr(Message) + '')
 
     """
-    TimeStamp = DateTimeLog()
+    TimeStamp = date_time_log()
 
     f = open("events.log", "a")
     f.write(repr(TimeStamp) + " " + repr( ErrorType ) + " " + repr( Message ) + '\n')
@@ -129,17 +137,15 @@ def WriteLog(Message, FuncName, ErrorType: LogLevel = "Info"):
     #f = open("events.log", "r")
     #print(f.read())
     """
-# End WriteLog Function
+# End write_log Function
 
 
 # Had to wait for the correct functions to load before writing eventlog
-WriteLog(Message='Starting Default Functions', FuncName='Default_Functions', ErrorType='Info')
+write_log(Message='Starting Default Functions', FuncName='Default_Functions', ErrorType='Info')
 
 
 def telegram_ai_chatbot():
-    WriteLog(Message='Starting telegram_ai_chatbot Functions', FuncName='telegram_ai_chatbot', ErrorType='Info')
-    import os
-    import telebot
+    write_log(Message='Starting telegram_ai_chatbot Functions', FuncName='telegram_ai_chatbot', ErrorType='Info')
 
     BOT_TOKEN = f"{creds.BOT_TOKEN}"
 
@@ -151,7 +157,6 @@ def telegram_ai_chatbot():
 
     @bot.message_handler(func=lambda msg: True)
     def echo_all(message):
-
         # bot.reply_to(message, message.text)
         lucy_question = bot.reply_to(message, message.text)
         print(f"{lucy_question.text}")
@@ -169,48 +174,108 @@ def create_csv_file():
     check_file = os.path.isfile(path)
 
     if check_file:
-        WriteLog(Message='CPU.csv already exist', FuncName='create_csv_file', ErrorType='Info')
+        write_log(Message='CPU.csv already exist', FuncName='create_csv_file', ErrorType='Info')
         return 0
     else:
         try:
-            WriteLog(Message='Creating file CPU.csv', FuncName='create_csv_file', ErrorType='Info')
+            write_log(Message='Creating file CPU.csv', FuncName='create_csv_file', ErrorType='Info')
             with open('CPU.csv', 'a', newline='') as csvfile:
                 spamwriter = csv.writer(csvfile, delimiter=',',
                                         quotechar='|', quoting=csv.QUOTE_MINIMAL)
                 spamwriter.writerow(["CPU", "AVG Usage", "Number Of Cores"])
             return 0
         except Exception as e:
-            WriteLog(Message='Error Creating file ' + str(e), FuncName='create_csv_file', ErrorType='Critical')
+            write_log(Message='Error Creating file ' + str(e), FuncName='create_csv_file', ErrorType='Critical')
         return 2
 
 
 # Writing to a CSV File with checks
-def WriteToCSV(filename, coldata):
+def write_to_csv(filename, coldata):
     CSVFILE = create_csv_file()
 
     if CSVFILE == 0:
         try:
-            WriteLog(Message='Opening file CPU.csv', FuncName='WriteToCSV', ErrorType='Info')
+            write_log(Message='Opening file CPU.csv', FuncName='write_to_csv', ErrorType='Info')
             with open(f'{filename}', 'a', newline='') as csvfile:
                 spamwriter = csv.writer(csvfile, delimiter=',',
                                         quotechar='|', quoting=csv.QUOTE_MINIMAL)
                 spamwriter.writerow([f"{coldata}"])
         except Exception as e:
-            WriteLog(Message='Error Opening file ' + str(e), FuncName='WriteToCSV', ErrorType='Critical')
+            write_log(Message='Error Opening file ' + str(e), FuncName='write_to_csv', ErrorType='Critical')
     elif CSVFILE == 2:
-        WriteLog(Message='Error Opening file ' + str(), FuncName='WriteToCSV', ErrorType='Critical')
+        write_log(Message='Error Opening file ' + str(), FuncName='write_to_csv', ErrorType='Critical')
+
+
+def check_create_reminder_file():
+    # checking file and creating it if needed
+    check_reminder_csv = os.path.isfile(path)
+
+    if check_reminder_csv:
+        write_log(Message=f'{filename} already exist', FuncName='check_write_create_reminder_csv', ErrorType='Info')
+        return 0
+    else:
+        try:
+            write_log(Message=f'Creating file{filename}', FuncName='check_write_create_reminder_csv', ErrorType='Info')
+            with open(f'{filename}', 'a', newline='') as csvfile:
+                spamwriter = csv.writer(csvfile, delimiter=',',
+                                        quotechar='|', quoting=csv.QUOTE_MINIMAL)
+                spamwriter.writerow(["Index", "Task", "Time", "Date", "Status"])
+            return 0
+        except Exception as e:
+            write_log(Message='Error Creating file ' + str(e), FuncName='check_write_create_reminder_csv', ErrorType='Critical')
+        return 2
+
+
+def write_reminder_file(coldata):
+    csv_file = check_create_reminder_file()
+
+    if csv_file == 0:
+        try:
+            write_log(Message='Opening file CPU.csv', FuncName='write_to_csv', ErrorType='Info')
+            with open(f'{filename}', 'a', newline='') as csvfile:
+                spamwriter = csv.writer(csvfile, delimiter=',',
+                                        quotechar='|', quoting=csv.QUOTE_MINIMAL)
+                spamwriter.writerow([f"{coldata}"])
+        except Exception as e:
+            write_log(Message='Error Opening file ' + str(e), FuncName='write_to_csv', ErrorType='Critical')
+    elif csv_file == 2:
+        write_log(Message='Error Opening file ' + str(), FuncName='write_to_csv', ErrorType='Critical')
 
 
 def reminder(query):
-    pync.notify(title="Reminder", message =f"{query}", timeout=1)
-    while True:
-        reminder()
-    time.sleep(10)
+    # TODO need to fix this function to make this work.
+
+    # Getting time info from query
+    if "morning" in query:
+        task_time = '8:00'
+    elif "afternoon" in query:
+        task_time = '12:00'
+    elif "evening" in query:
+        task_time = '18:00'
+    elif "tonight" in query:
+        task_time = '21:00'
+    else:
+        task_time = '12:00'
+
+    day = datetime.now().strftime('%A')
+    status = "Open"
+
+    mystring = f"{query}"
+    keyword = 'Remind'
+    before_keyword, keyword, after_keyword = mystring.partition(keyword)
+    print(before_keyword)
+    print(keyword)
+    print(after_keyword)
+    print(task_time)
+
+    reminder_data = f"1, {after_keyword}, {task_time}, {day}, {status}"
+    write_reminder_file(reminder_data)
+    # return query
 
 
 # get weather
 def get_weather(city):
-    WriteLog(Message='getting weather info', FuncName='get_weather', ErrorType='Info')
+    write_log(Message='getting weather info', FuncName='get_weather', ErrorType='Info')
 
     if city is None:
         # enter city name
@@ -242,8 +307,8 @@ def get_weather(city):
 # End get weather
 
 # Lucy function with Training
-def Lucy():
-    WriteLog(Message='Starting Lucy Functions', FuncName='Lucy', ErrorType='Info')
+def lucy():
+    write_log(Message='Starting Lucy Functions', FuncName='Lucy', ErrorType='Info')
     from chatterbot import ChatBot
     from chatterbot.trainers import ListTrainer
     from chatterbot.trainers import ChatterBotCorpusTrainer
@@ -333,8 +398,8 @@ def Lucy():
         second = (data['Answer'].values[i])
 
         # Adding info from the csv file for training...
-        question = (f'{first}')
-        answer = (f'{second}')
+        question = f'{first}'
+        answer = f'{second}'
 
         print(f"{question}", f"{answer}")
         trainer.train([
@@ -355,43 +420,44 @@ def Lucy():
             audio = record_audio()
             query = recognize_speech(audio)
         elif query in exit_conditions:
-            speech = (f"Goodbye")
+            speech = f"Goodbye"
 
             print(f"🪴 {speech}")
             text_to_speech(text=speech)
             break
         elif 'get weather' in query or 'what is the weather' in query:
-            speech = (f"What City would you like me to check for you?")
+            speech = f"What City would you like me to check for you?"
             print(f"🤪 {speech}")
             text_to_speech(text=speech)
             audio = record_audio()
             checkCity = recognize_speech(audio)
 
-            speech = (f"Getting weather for {checkCity}! Please wait a second...")
+            speech = f"Getting weather for {checkCity}! Please wait a second..."
             print(f"🤪 {speech}")
             text_to_speech(text=speech)
 
             weather = get_weather(city=f"{checkCity}")
             print(f"🪴 Here is your weather {weather}")
-            speech = (f"Here is your weather {weather}")
+            speech = f"Here is your weather {weather}"
             text_to_speech(text=speech)
         else:
-            #EmotionsMarker = EmotionsChatMarker(GetEmotion = f"{query}")
-            speech = (f"{chatbot.get_response(query)}")
-            #print(f"🤪 {speech}" + f"🤔 Your emotional marker is {EmotionsMarker}")
+            # EmotionsMarker = emotions_chat_marker(get_emotion = f"{query}")
+            speech = f"{chatbot.get_response(query)}"
+            # print(f"🤪 {speech}" + f"🤔 Your emotional marker is {EmotionsMarker}")
             print(f"🤪 {speech}")
             text_to_speech(text=speech)
 
-    WriteLog(Message='Closing Lucy Functions', FuncName='Lucy', ErrorType='Info')
+    write_log(Message='Closing Lucy Functions', FuncName='Lucy', ErrorType='Info')
 # End Lucy
 
-# EmotionsChatMarker function
-def EmotionsChatMarker(GetEmotion):
-    WriteLog(Message='Starting EmotionsChatMarker Functions', FuncName='EmotionsChatMarker', ErrorType='Info')
+
+# emotions_chat_marker function
+def emotions_chat_marker(get_emotion):
+    write_log(Message='Starting emotions_chat_marker Functions', FuncName='emotions_chat_marker', ErrorType='Info')
     # Importing ChatBot functions
     from chatterbot import ChatBot
-    #from chatterbot.trainers import ListTrainer
-    #from chatterbot.trainers import ChatterBotCorpusTrainer
+    # from chatterbot.trainers import ListTrainer
+    # from chatterbot.trainers import ChatterBotCorpusTrainer
 
     # Creating ChatBot
     chatbot = ChatBot(
@@ -401,12 +467,12 @@ def EmotionsChatMarker(GetEmotion):
     )
 
     # Loading and training Chatbot
-    #trainer = ChatterBotCorpusTrainer(chatbot)
-    #trainer.train("chatterbot.corpus.english")
-    #trainer = ListTrainer(chatbot)
+    # trainer = ChatterBotCorpusTrainer(chatbot)
+    # trainer.train("chatterbot.corpus.english")
+    # trainer = ListTrainer(chatbot)
 
     """
-    # Trainging the AI with a CSV file
+    # Training the AI with a CSV file
     # making data frame from csv file
     data = pd.read_csv("emotion_sentimen_dataset.csv", index_col ="Index")
     i = 0
@@ -430,16 +496,17 @@ def EmotionsChatMarker(GetEmotion):
         ])
         i += 1
     """
-    speech = (f"{chatbot.get_response(GetEmotion)}")
+    speech = f"{chatbot.get_response(get_emotion)}"
     print(f"🤔 {speech}")
 
-    WriteLog(Message='Closing EmotionsChatMarker Functions', FuncName='EmotionsChatMarker', ErrorType='Info')
+    write_log(Message='Closing emotions_chat_marker Functions', FuncName='emotions_chat_marker', ErrorType='Info')
     return speech
-# End EmotionsChatMarker
+# End emotions_chat_marker
+
 
 # Creates mp3 for speech
 def text_to_speech(text):
-    WriteLog(Message='Starting text_to_speech Functions', FuncName='text_to_speech', ErrorType='Info')
+    write_log(Message='Starting text_to_speech Functions', FuncName='text_to_speech', ErrorType='Info')
     # Initialize gTTS with the text to convert
     speech = gTTS(text)
 
@@ -449,16 +516,11 @@ def text_to_speech(text):
 
     # Play the audio file
     os.system('afplay ' + speech_file)
-    WriteLog(Message='Closing text_to_speech Functions', FuncName='text_to_speech', ErrorType='Info')
+    write_log(Message='Closing text_to_speech Functions', FuncName='text_to_speech', ErrorType='Info')
 
-def get_cityForWeather(query: object) -> object:
-    """
 
-    :param query:
-    City Name
-    :return:
-    """
-    WriteLog(Message='Starting get_cityForWeather Functions', FuncName='get_cityForWeather', ErrorType='Info')
+def get_city_for_weather(query):
+    write_log(Message='Starting get_city_for_weather Functions', FuncName='get_city_for_weather', ErrorType='Info')
     citynames: str = (
         'Aberdeen|Abilene|Akron|Albany|Albuquerque|Alexandria|Allentown|Amarillo|Anaheim|Anchorage|Ann '
         'Arbor|Antioch|Apple Valley|Appleton|Arlington|Arvada|Asheville|Athens|Atlanta|Atlantic '
@@ -503,22 +565,22 @@ def get_cityForWeather(query: object) -> object:
         'Valley City|Westminster|Wichita|Wilmington|Winston|Winter Haven|Worcester|Yakima|Yonkers|York|Youngstown')
     checkCity = re.findall(citynames, query, flags=re.IGNORECASE)
     checkCityFixed = str(checkCity)[1:-1]
-    WriteLog(Message='Closing get_cityForWeather Functions', FuncName='get_cityForWeather', ErrorType='Info')
+    write_log(Message='Closing get_city_for_weather Functions', FuncName='get_city_for_weather', ErrorType='Info')
     return checkCityFixed
 
 
-def get_ApplicationName(query):
-    WriteLog(Message='Starting get_ApplicationName Functions', FuncName='get_ApplicationName', ErrorType='Info')
-    application_names = ('Chrome|Notes|')
+def get_application_name(query):
+    write_log(Message='Starting get_application_name Functions', FuncName='get_application_name', ErrorType='Info')
+    application_names = 'Chrome|Notes|'
     checkapplication_names = re.findall(application_names, query, flags=re.IGNORECASE)
     checkapplication_namesFixed = str(application_names)[1:-1]
-    WriteLog(Message='Closing get_ApplicationName Functions', FuncName='get_ApplicationName', ErrorType='Info')
+    write_log(Message='Closing get_application_name Functions', FuncName='get_application_name', ErrorType='Info')
     return checkapplication_namesFixed
 
 
 # testing a different method of getting and speaking text
-def SpeechToTextTesting():
-    WriteLog(Message='Starting SpeechToTextTesting Functions', FuncName='SpeechToTextTesting', ErrorType='Info')
+def speech_to_text_testing():
+    write_log(Message='Starting speech_to_text_testing Functions', FuncName='speech_to_text_testing', ErrorType='Info')
     """
     recognizer.recognize_google(),
     recognizer.recognize_tensorflow(),
@@ -535,14 +597,10 @@ def SpeechToTextTesting():
     recognizer.recognize_ibm()
     """
 
-    # Python program to translate
-    # speech to text and text to speech
-
     # from speech_recognition import Microphone, RequestError, Recognizer, UnknownValueError
 
-    # Function to convert text to
-    # speech
-    def SpeakText(command):
+    # Function to convert text to speech
+    def speak_text(command):
         engine = pyttsx3.init()
         voices: object = engine.getProperty('voices')
         engine.setProperty('voice', voices[1].id)
@@ -574,62 +632,65 @@ def SpeechToTextTesting():
                 audio2 = r.listen(source2)
 
                 # Using google to recognize audio
-                MyText = sr.recognize(audio2)
-                MyText = MyText.lower()
+                my_text = sr.recognize(audio2)
+                my_text = my_text.lower()
 
-                print("Did you say ", MyText)
-                SpeakText(command=MyText)
-
+                print("Did you say ", my_text)
+                speak_text(command=my_text)
+                write_log(Message='Starting speech_to_text_testing Functions', FuncName='speech_to_text_testing',
+                          ErrorType='Info')
         except sr.RequestError as e:
             print("Could not request results; {0}".format(e))
-
+            write_log(Message='Starting speech_to_text_testing Functions', FuncName='speech_to_text_testing',
+                      ErrorType='Info')
         except sr.UnknownValueError:
             print("unknown error occurred")
-    WriteLog(Message='Closing SpeechToTextTesting Functions', FuncName='SpeechToTextTesting', ErrorType='Info')
+            write_log(Message='Starting speech_to_text_testing Functions', FuncName='speech_to_text_testing',
+                      ErrorType='Info')
 
 
 def record_audio():
-    WriteLog(Message='Starting record_audio Functions', FuncName='record_audio', ErrorType='Info')
+    write_log(Message='Starting record_audio Functions', FuncName='record_audio', ErrorType='Info')
     with sr.Microphone() as source:
         r.adjust_for_ambient_noise(source, duration=0.2)
         print(f"🤪 Listening...")
         text_to_speech(text="I'm Listening...")
         audio = r.listen(source=source)
-    WriteLog(Message='Closing record_audio Functions', FuncName='record_audio', ErrorType='Info')
+    write_log(Message='Closing record_audio Functions', FuncName='record_audio', ErrorType='Info')
     return audio
 
 
 def recognize_speech(audio):
-    WriteLog(Message='Starting recognize_speech Functions', FuncName='recognize_speech', ErrorType='Info')
+    write_log(Message='Starting recognize_speech Functions', FuncName='recognize_speech', ErrorType='Info')
     try:
         text = recognizer.recognize_google(audio)
         print(f"🤪 You said: {text}")
-        WriteLog(Message='Closing recognize_speech Functions', FuncName='recognize_speech', ErrorType='Info')
+        write_log(Message='Closing recognize_speech Functions', FuncName='recognize_speech', ErrorType='Info')
         return text
     except sr.UnknownValueError:
         print(f"🤪 Sorry, I couldn't understand that.")
         text = "Sorry, I couldn't understand that."
-        WriteLog(Message='Closing recognize_speech Functions', FuncName='recognize_speech', ErrorType='Error')
+        write_log(Message='Closing recognize_speech Functions', FuncName='recognize_speech', ErrorType='Error')
         return text
     except sr.RequestError:
         print(f"🤪 Sorry, there was an error processing your request.")
         text = "Sorry, there was an error processing your request."
-        WriteLog(Message='Closing recognize_speech Functions', FuncName='recognize_speech', ErrorType='Critical')
+        write_log(Message='Closing recognize_speech Functions', FuncName='recognize_speech', ErrorType='Critical')
         return text
 
 
-def GetSpeech():
-    WriteLog(Message='Starting GetSpeech Functions', FuncName='GetSpeech', ErrorType='Info')
+def get_speech():
+    write_log(Message='Starting get_speech Functions', FuncName='get_speech', ErrorType='Info')
     # Getting speech instead of having to type to Lucy
     audio = record_audio()
     query = recognize_speech(audio)
-    WriteLog(Message='Closing GetSpeech Functions', FuncName='GetSpeech', ErrorType='Info')
+    write_log(Message='Closing get_speech Functions', FuncName='get_speech', ErrorType='Info')
     return query
 
 
 # Lucy function
-def LucyGUI(query):
-    WriteLog(Message='Starting Lucy Functions', FuncName='Lucy', ErrorType='Info')
+def lucy_gui(query):
+    write_log(Message='Starting Lucy Functions', FuncName='Lucy', ErrorType='Info')
     from chatterbot import ChatBot
     chatbot = ChatBot(
         "Lucy",
@@ -650,17 +711,17 @@ def LucyGUI(query):
         speech = f"Goodbye"
         print(f"🤪 {speech}")
         text_to_speech(text=speech)
-        WriteLog(Message='Closing Lucy Functions', FuncName='Lucy', ErrorType='Info')
+        write_log(Message='Closing Lucy Functions', FuncName='Lucy', ErrorType='Info')
         return f"🤪 {speech}"
     elif 'get weather' in query or 'what is the weather' in query:
-        checkCityFixed = get_cityForWeather(query=query)
+        checkCityFixed = get_city_for_weather(query=query)
 
         if checkCityFixed is None:
             speech = f"What City would you like me to check for you?"
             print(f"🤪 {speech}")
             text_to_speech(text=speech)
 
-            checkCityFixed = GetSpeech()
+            checkCityFixed = get_speech()
 
             speech = f"Getting weather for {checkCityFixed}! Please wait a second..."
             print(f"🤪 {speech}")
@@ -670,35 +731,34 @@ def LucyGUI(query):
         print(f"🤪 Here is your weather {weather}")
         speech = f"Here is your weather for {checkCityFixed} {weather}"
         text_to_speech(text=speech)
-        WriteLog(Message='Closing Lucy Functions', FuncName='Lucy', ErrorType='Info')
+        write_log(Message='Closing Lucy Functions', FuncName='Lucy', ErrorType='Info')
         return f"🤪 {speech}"
     elif 'search' in query or 'youtube' in query or 'wikipedia' in query:
         search_web(query)
         print(f"🤪 Here is your web search")
         speech = f"Here is your web search"
         text_to_speech(text=speech)
-        WriteLog(Message='Closing Lucy Functions', FuncName='Lucy', ErrorType='Info')
+        write_log(Message='Closing Lucy Functions', FuncName='Lucy', ErrorType='Info')
         return f"🤪 {speech}"
     elif 'remind me' in query or 'set reminder' in query:
         reminder(query)
         print(f"🤪 Setting Reminder")
         speech = f"Setting Reminder"
         text_to_speech(text=speech)
-        WriteLog(Message='Closing Lucy Functions', FuncName='Lucy', ErrorType='Info')
+        write_log(Message='Closing Lucy Functions', FuncName='Lucy', ErrorType='Info')
         return f"🤪 {speech}"
     else:
-        # EmotionsMarker = EmotionsChatMarker(GetEmotion = f"{query}")
+        # EmotionsMarker = emotions_chat_marker(get_emotion = f"{query}")
         speech = f"{chatbot.get_response(query)}"
         # print(f"🤪 {speech}" + f"🤔 Your emotional marker is {EmotionsMarker}")
         print(f"🤪 {speech}")
         text_to_speech(text=speech)
-        WriteLog(Message='Closing Lucy Functions', FuncName='Lucy', ErrorType='Info')
+        write_log(Message='Closing Lucy Functions', FuncName='Lucy', ErrorType='Info')
         return f"🤪 {speech}"
-
 # End Lucy
 
+
 def lucy_gpt_chat(query):
-    import openai
 
     openai.api_key = f"{creds.api_key}"
     messages = [{"role": "system", "content":
@@ -713,15 +773,28 @@ def lucy_gpt_chat(query):
                 model="gpt-3.5-turbo", messages=messages
             )
         reply = chat.choices[0].message.content
-        if 'remind' in reply:
-            print(f"ChatGPT Reminder: {reply}")
-            reminder(query=f"{reply}")
+        print(f"This is the input - {query}")
+        if 'Remind me' in query:
+            print(f"ChatGPT Reminder: {query}")
+            reminder(query=f"{query}")
+            messages.append({"role": "assistant", "content": "Setting your reminder now"})
+            return reply
+        elif 'Set a reminder' in query:
+            print(f"ChatGPT Reminder: {query}")
+            reply = reminder(query=f"{query}")
             messages.append({"role": "assistant", "content": reply})
             return reply
-        elif 'set reminder' in reply:
-            print(f"ChatGPT Reminder: {reply}")
-            reminder(query=f"{reply}")
-            messages.append({"role": "assistant", "content": reply})
+        elif 'get weather' in query or 'what is the weather' in query:
+            checkCityFixed = get_city_for_weather(query=query)
+
+            if checkCityFixed is None:
+                # Setting Default City to Boise
+                checkCityFixed = "Boise"
+
+            weather = get_weather(city=f"{checkCityFixed}")
+            print(f"🤪 Here is your weather {weather}")
+            speech = f"Here is your weather for {checkCityFixed} {weather}"
+            # messages.append({"role": "assistant", "content": reply})
             return reply
         else:
             print(f"ChatGPT: {reply}")
@@ -729,38 +802,13 @@ def lucy_gpt_chat(query):
             return reply
 
 
+# Creating gui parameters
+class MAIN_WINDOW(QMainWindow):
+    # Creating a gui for the main LUCY app
 
-    # Import the necessary libraries
-    # import os
-    # import openai
-    # Set API key with one of these options
-
-    # Set the role or context of the assistant
-    # messages = [{"role": "system", "content": "You are a assistant"}]
-    # messages.append({"role": "assistant", "content": f"{query}"})
-    # messages.append({"role": "user", "content": "answer with a single sentence. "})
-    # Make an API call with default settings
-    # answers = openai.ChatCompletion.create(
-        # model="gpt-3.5-turbo",
-        # These are parameters that can be adjusted
-        # temperature = 0.7,
-        # max_tokens = 100,
-        # top_p=1,
-        # frequency_penalty = 0,
-        # presence_penalty = 0,
-        # messages=messages
-    # )
-    # Print the response
-    # telagram_response = (answers['choices'][0]['message']['content'])
-    # print(answers['choices'][0]['message']['content'])
-    # return telagram_response
-
-# Creating GUI parameters
-class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-
-        self.setWindowTitle("Lucy UI 1.0.1.8")
+        self.setWindowTitle("Lucy UI 1.0.1.13")
         self.setFixedWidth(600)
         self.setFixedHeight(450)
         self.left = 10
@@ -802,7 +850,7 @@ class MainWindow(QMainWindow):
         textboxValue = self.input.text()
         # print(f"Clicked! {textboxValue}")
         self.TextBox.append(f"🤓 {textboxValue}")
-        response = LucyGUI(query=f"{textboxValue}")
+        response = lucy_gui(query=f"{textboxValue}")
         self.TextBox.append(f"{response}")
         self.input.clear()
         if 'Goodbye' in response:
@@ -810,21 +858,22 @@ class MainWindow(QMainWindow):
 
     def speech(self):
         # print("Getting speech to text")
-        query = GetSpeech()
+        query = get_speech()
         self.TextBox.append(f"🤓 {query}")
-        response = LucyGUI(query=f"{query}")
+        response = lucy_gui(query=f"{query}")
         self.TextBox.append(f"{response}")
         if 'Goodbye' in response:
             sys.exit()
 
-def GUI():
+
+def gui():
     # TODO need to change this to pygame for better response within the app
     app = QApplication(sys.argv)
 
-    window = MainWindow()
+    window = MAIN_WINDOW()
     window.show()
     # Start the event loop
     app.exec()
 
 
-WriteLog(Message='Finished loading all Default Functions Successfully', FuncName='Default_Functions', ErrorType='Info')
+write_log(Message='Finished loading all Default Functions Successfully', FuncName='Default_Functions', ErrorType='Info')

@@ -1,4 +1,15 @@
 # Change Log
+## [1.0.1.13] 2024-05-11
+### Added
+- Reminder Function (beta partially working)
+- Added write_reminder_file
+- Added check_create_reminder_file
+### Removed
+### Fixed
+- Get_Weather can now be accessed via the new ChatAI and Telegram
+### Changed
+### Security
+
 ## [1.0.1.12] 2024-05-06
 ### Added
 - Reminder Function
@@ -37,8 +48,8 @@
 ## [1.0.1.7] - 2024-04-23
 ### Added
 - UI for better experience
-- Added GetSpeech
-- Added LucyGUI to stream line functions to work better with a UI. Uses the same database as Lucy
+- Added get_speech
+- Added lucy_gui to stream line functions to work better with a UI. Uses the same database as Lucy
 - Added Games (testing...)
 ### Removed
 ### Fixed
@@ -64,7 +75,7 @@
 ## [1.0.1.4] - 2024-04-16
 ### Added
 - Added create_csv_file
-- Added WriteToCSV
+- Added write_to_csv
 - Added ChatPotTest (working function)
 - Added ChatBotTest 
 ### Removed
@@ -75,8 +86,8 @@
 
 ## [1.0.1.3] - 2024-04-13
 ### Added
-- Added DateTimeLog Function
-- Added WriteLog Function
+- Added date_time_log Function
+- Added write_log Function
 - Added GetSysInfo
 - Added GetBootTime
 - Added GetNetworkInfo
@@ -84,7 +95,7 @@
 - Added GetMemUsage
 ### Removed
 ### Fixed
-- Fixed WriteLog Functio to check for errortype with auto populated selection
+- Fixed write_log Functio to check for errortype with auto populated selection
 ### Changed
 - Moved Add Function MainApplication
 - Moved Loops Function to MainApplication

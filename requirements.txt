@@ -1,7 +1,7 @@
 absl-py==2.1.0
 astunparse==1.6.3
 attrs==23.2.0
-beautifulsoup4==4.13.0b2
+beautifulsoup4~=4.11.1
 certifi==2024.2.2
 charset-normalizer==3.3.2
 ChatterBot==1.0.4
@@ -218,7 +218,7 @@ PyYAML==3.13
 rapidfuzz==3.8.1
 ratelim==0.1.6
 regex==2024.4.28
-requests==2.31.0
+requests~=2.28.1
 reverse-geocode==1.6
 rich==13.7.1
 scipy==1.13.0
@@ -246,3 +246,7 @@ wolframalpha==5.0.0
 wrapt==1.16.0
 wsproto==1.2.0
 xmltodict==0.13.0
+
+pync~=2.0.3
+telebot~=0.0.5
+openai~=0.28.0
