@@ -125,3 +125,12 @@ dmypy.json
 
 # Creds
 creds.py
+
+# Images
+idenprof/
+conversations.csv
+neg/
+Resources/*.jpeg
+Resources/*/*.jpeg
+*.jpeg
+*.jpg

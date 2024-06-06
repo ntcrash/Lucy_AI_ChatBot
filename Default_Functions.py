@@ -1,6 +1,6 @@
 ##################################################
-# Main Function for Launching Lucy AI ChatBot    #
-# Version 1.0.1.13 - Released 2024-05-11         #
+# Main Functions for Launching Lucy AI ChatBot   #
+# Version 1.0.1.14 - Released 2024-06-04         #
 # Author - Lawrence Lutton                       #
 ##################################################
 
@@ -12,6 +12,8 @@ import os.path
 import re
 import sys
 from datetime import datetime
+import base64
+import googlesearch
 import psutil
 from typing import Literal, get_args
 from chatterbot import ChatBot
@@ -31,9 +33,26 @@ import time
 import creds
 import telebot
 import openai
+from googlesearch import search
 # import notifier  # Importing notifier.py
 # import getReminders  # Importing getReminders.py
 # import notify2
+import search_web as google
+from ImageReconition import *
+import json
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+
+"""
+try:
+    _create_unverified_https_context = ssl._create_unverified_context
+except AttributeError:
+    pass
+else:
+    ssl._create_default_https_context = _create_unverified_https_context
+
+nltk.download()
+"""
+
 
 # Initialize the recognizer
 recognizer = sr.Recognizer()
@@ -144,27 +163,133 @@ def write_log(Message, FuncName, ErrorType: LogLevel = "Info"):
 write_log(Message='Starting Default Functions', FuncName='Default_Functions', ErrorType='Info')
 
 
+# Creating the Telegram function to pass input and output to Lucy
 def telegram_ai_chatbot():
+    openai.api_key = f"{creds.api_key}"
     write_log(Message='Starting telegram_ai_chatbot Functions', FuncName='telegram_ai_chatbot', ErrorType='Info')
 
     BOT_TOKEN = f"{creds.BOT_TOKEN}"
 
     bot = telebot.TeleBot(BOT_TOKEN)
 
-    @bot.message_handler(commands=['start', 'hello'])
+    path = './python1.jpeg'
+    path2 = './python2.jpeg'
+    # check_file = os.path.isfile(path)
+
+    # Cleaning up if old files are still there
+    if os.path.isfile('./python1.jpeg') is True:
+        print("Deleting Image file")
+        os.remove("python1.jpeg")
+    if os.path.isfile('./python2.jpeg') is True:
+        print("Deleting Image file 2")
+        os.remove("python2.jpeg")
+
+    print("Telegram Bot Started")
+
+    @bot.message_handler(commands=['start', 'hello', 'like'])
     def send_welcome(message):
+        markup = InlineKeyboardMarkup()
+        like_button = InlineKeyboardButton('👍 Like', callback_data='like')
+        markup.add(like_button)
+        bot.send_message(message.chat.id, "Do you like this message?", reply_markup=markup)
         bot.reply_to(message, "Howdy, how are you doing?")
 
+    # Main message handler for AI chat.
     @bot.message_handler(func=lambda msg: True)
     def echo_all(message):
         # bot.reply_to(message, message.text)
-        lucy_question = bot.reply_to(message, message.text)
-        print(f"{lucy_question.text}")
+        lucy_question = message
+        # lucy_question = bot.reply_to(message, message.text)
+        print(f"{lucy_question.text.lower()}")
+        # lucy_response = lucy_gui(query=f"{lucy_question.text.lower()}")
         lucy_response = lucy_gpt_chat(query=f"{lucy_question.text}")
         bot.reply_to(message, f"{lucy_response}")
+        lastChatId = message.chat.id
+        print(f"{lastChatId}")
+
+    # Getting and detecting images
+    @bot.message_handler(func=lambda m: True, content_types=['photo'])
+    def get_broadcast_picture(message):
+        file_path = bot.get_file(message.photo[-1].file_id).file_path
+        file = bot.download_file(file_path)
+        # lastMessageId = message[-1].message_id
+
+        lastChatId = message.chat.id
+        with open("python1.jpeg", "wb") as code:
+            code.write(file)
+
+        check_file = os.path.isfile(path)
+        img = 0
+        if check_file is True:
+            base64_image = encode_image(image_path="python1.jpeg")
+
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {openai.api_key}"
+            }
+
+            payload = {
+                "model": "gpt-4o",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": "What’s in this image?"
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:image/jpeg;base64,{base64_image}"
+                                }
+                            }
+                        ]
+                    }
+                ],
+                "max_tokens": 300
+            }
+
+            response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
+            response_dict = json.loads(response.text)
+
+            # Access the content section
+            content = response_dict['choices'][0]['message']['content']
+
+            bot.reply_to(message, f"{content}")
+
+            print(f"{lastChatId}")
+            img = stop_sign_recognition(image=f"python1.jpeg")
+        if img != 1:
+            print(f"{lastChatId}")
+            img = face_detector(image=f"python1.jpeg")
+
+        check_file2 = os.path.isfile(path2)
+        if check_file2 is True:
+            bot.send_photo(chat_id=lastChatId, photo=open("python2.jpeg", "rb"))
+        else:
+            bot.reply_to(message, f"No match found")
+
+        # Cleaning up if old files are still there
+        if os.path.isfile('./python1.jpeg') is True:
+            print("Deleting Image file")
+            os.remove("python1.jpeg")
+        if os.path.isfile('./python2.jpeg') is True:
+            print("Deleting Image file 2")
+            os.remove("python2.jpeg")
+
+    @bot.callback_query_handler(func=lambda call: call.data == 'like')
+    def callback_query(call):
+        if call.data == 'like':
+            bot.answer_callback_query(call.id, "You liked this message!")
+            bot.send_message(call.message.chat.id, "Thanks for liking the message!")
 
     bot.infinity_polling()
 
+# Function to encode the image
+def encode_image(image_path):
+  with open(image_path, "rb") as image_file:
+    return base64.b64encode(image_file.read()).decode('utf-8')
 
 # create_csv_file with checks
 def create_csv_file():
@@ -302,9 +427,8 @@ def get_weather(city):
     sky = data[1]
     weather = (f"{data}" + f" {temp}")
     return weather
-
-
 # End get weather
+
 
 # Lucy function with Training
 def lucy():
@@ -335,6 +459,10 @@ def lucy():
     trainer.train([
         "Hi",
         "Hello, I am Lucy!!! 🤗",
+    ])
+    trainer.train([
+        "What is your name?",
+        "I am Lucy!!! 🤗",
     ])
     trainer.train([
         "Hi",
@@ -386,25 +514,23 @@ def lucy():
     trainer.train(conversation2)
     trainer.train(conversation3)
 
-    # Disabling CSV import training
-
     # Training the AI with a CSV file with standard questions and answers
     # making data frame from csv file
-    data = pd.read_csv("dialogs_expanded.csv", index_col="Index")
+    data = pd.read_csv("conversations.csv", index_col="Index")
     i = 0
     for row in data.index:
         # retrieving row by loc method
-        first = (data['Question'].values[i])
-        second = (data['Answer'].values[i])
+        first = (data['Conversations'].values[i])
+        # second = (data['Answer'].values[i])
 
         # Adding info from the csv file for training...
         question = f'{first}'
-        answer = f'{second}'
+        # answer = f'{second}'
 
-        print(f"{question}", f"{answer}")
+        # print(f"{question}", f"{answer}")
         trainer.train([
             f"{question}",
-            f"{answer}",
+            # f"{answer}",
         ])
         i += 1
 
@@ -687,6 +813,17 @@ def get_speech():
     write_log(Message='Closing get_speech Functions', FuncName='get_speech', ErrorType='Info')
     return query
 
+def search_google(query):
+    # set query to search for in Google
+    # query = "long winter coat"
+    # execute query and store search results
+    # results = search(query, tld="com", lang="en", stop=3, pause=2)
+    results = search(query, lang='en', num_results=5)
+    # iterate over all search results and print them
+    for result in results:
+        print(result)
+        return result
+
 
 # Lucy function
 def lucy_gui(query):
@@ -710,7 +847,7 @@ def lucy_gui(query):
     if query in exit_conditions:
         speech = f"Goodbye"
         print(f"🤪 {speech}")
-        text_to_speech(text=speech)
+        # text_to_speech(text=speech)
         write_log(Message='Closing Lucy Functions', FuncName='Lucy', ErrorType='Info')
         return f"🤪 {speech}"
     elif 'get weather' in query or 'what is the weather' in query:
@@ -719,32 +856,35 @@ def lucy_gui(query):
         if checkCityFixed is None:
             speech = f"What City would you like me to check for you?"
             print(f"🤪 {speech}")
-            text_to_speech(text=speech)
+            # text_to_speech(text=speech)
 
             checkCityFixed = get_speech()
 
             speech = f"Getting weather for {checkCityFixed}! Please wait a second..."
             print(f"🤪 {speech}")
-            text_to_speech(text=speech)
+            # text_to_speech(text=speech)
 
         weather = get_weather(city=f"{checkCityFixed}")
         print(f"🤪 Here is your weather {weather}")
         speech = f"Here is your weather for {checkCityFixed} {weather}"
-        text_to_speech(text=speech)
+        # text_to_speech(text=speech)
         write_log(Message='Closing Lucy Functions', FuncName='Lucy', ErrorType='Info')
         return f"🤪 {speech}"
     elif 'search' in query or 'youtube' in query or 'wikipedia' in query:
-        search_web(query)
+        # search_google(query)
+        # Download images example
+        html = google.search(f"{query}")
+
         print(f"🤪 Here is your web search")
         speech = f"Here is your web search"
-        text_to_speech(text=speech)
+        # text_to_speech(text=speech)
         write_log(Message='Closing Lucy Functions', FuncName='Lucy', ErrorType='Info')
-        return f"🤪 {speech}"
+        return f"🤪 {html}"
     elif 'remind me' in query or 'set reminder' in query:
         reminder(query)
         print(f"🤪 Setting Reminder")
         speech = f"Setting Reminder"
-        text_to_speech(text=speech)
+        # text_to_speech(text=speech)
         write_log(Message='Closing Lucy Functions', FuncName='Lucy', ErrorType='Info')
         return f"🤪 {speech}"
     else:
@@ -752,7 +892,7 @@ def lucy_gui(query):
         speech = f"{chatbot.get_response(query)}"
         # print(f"🤪 {speech}" + f"🤔 Your emotional marker is {EmotionsMarker}")
         print(f"🤪 {speech}")
-        text_to_speech(text=speech)
+        # text_to_speech(text=speech)
         write_log(Message='Closing Lucy Functions', FuncName='Lucy', ErrorType='Info')
         return f"🤪 {speech}"
 # End Lucy
@@ -762,7 +902,7 @@ def lucy_gpt_chat(query):
 
     openai.api_key = f"{creds.api_key}"
     messages = [{"role": "system", "content":
-        "You are a intelligent assistant."}]
+        "You are Lucy a intelligent assistant."}]
     while True:
         message = f"{query}"
         if message:
@@ -773,17 +913,22 @@ def lucy_gpt_chat(query):
                 model="gpt-3.5-turbo", messages=messages
             )
         reply = chat.choices[0].message.content
-        print(f"This is the input - {query}")
-        if 'Remind me' in query:
+
+        # print(f"This is the input - {query}")
+        if 'remind me' in query:
+            print(f"This is the input - {query}")
             print(f"ChatGPT Reminder: {query}")
             reminder(query=f"{query}")
             messages.append({"role": "assistant", "content": "Setting your reminder now"})
-            return reply
-        elif 'Set a reminder' in query:
+            # messages.append({"role": "assistant", "content": reply})
+            return "Setting your reminder now"
+        elif 'set a reminder' in query:
+            print(f"This is the input - {query}")
             print(f"ChatGPT Reminder: {query}")
-            reply = reminder(query=f"{query}")
-            messages.append({"role": "assistant", "content": reply})
-            return reply
+            reminder(query=f"{query}")
+            messages.append({"role": "assistant", "content": "Setting your reminder now"})
+            # messages.append({"role": "assistant", "content": reply})
+            return "Setting your reminder now"
         elif 'get weather' in query or 'what is the weather' in query:
             checkCityFixed = get_city_for_weather(query=query)
 
@@ -794,8 +939,8 @@ def lucy_gpt_chat(query):
             weather = get_weather(city=f"{checkCityFixed}")
             print(f"🤪 Here is your weather {weather}")
             speech = f"Here is your weather for {checkCityFixed} {weather}"
-            # messages.append({"role": "assistant", "content": reply})
-            return reply
+            messages.append({"role": "assistant", "content": speech})
+            return speech
         else:
             print(f"ChatGPT: {reply}")
             messages.append({"role": "assistant", "content": reply})

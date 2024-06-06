@@ -1,9 +1,21 @@
 # Change Log
+## [1.0.1.14] 2024-05-17
+### Added
+- Added Function search_web.py to search google
+### Removed
+### Fixed
+- Telegram fixed echo before Lucy Response
+- Trained Lucy with more conversational data
+- Image Recognition working for stop signs, faces, via image send thru telegramBot
+### Changed
+### Security
+
 ## [1.0.1.13] 2024-05-11
 ### Added
 - Reminder Function (beta partially working)
 - Added write_reminder_file
 - Added check_create_reminder_file
+- Added Image Recognition (still training)
 ### Removed
 ### Fixed
 - Get_Weather can now be accessed via the new ChatAI and Telegram

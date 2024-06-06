@@ -1,8 +1,8 @@
-# Lucy AI ChatBot 1.0.1.13 - 2024-05-08
+# Lucy AI ChatBot 1.0.1.14 - 2024-05-16
 ## Change Log info
 - x.x.x.y Y is the currently active build, once complete Y will be dropped and the version locked in.
 ### ChangeLog started in ver. 1.0.1.x
-#### Current Dev build 1.0.1.13
+#### Current Dev build 1.0.1.14
 - Fixed AI training
 - Added Text to Speech
 - Added Speech to Text
@@ -14,12 +14,17 @@
 - Reminder Function (beta partially working)
 - Added write_reminder_file
 - Added check_create_reminder_file
+- Added Search_Web.py
+- Added Image Reorganization
  
 # How to run the app
 ## Running the app
 - Once you install all the requirements launch MainApplication.py
 
 ## Setup Guide in progress
+- You will need to create a creds.py file with these two variables
+  - openai.api_key = f"{creds.api_key}"
+  - BOT_TOKEN = f"{creds.BOT_TOKEN}"
 - Use project requirements file for all packages.
 - for psutil to work you will need to install it first
 - pip3 install psutil
@@ -52,3 +57,4 @@
 - Reminder and Notifier Apps (work in progress)
 - Consolidated web searches
 - Web / Mobile app frontend
+- Add image recognition (work in progress) [1.0.14]
